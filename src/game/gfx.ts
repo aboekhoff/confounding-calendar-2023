@@ -41,6 +41,11 @@ export const spriteData: Record<string, SpriteData> = {
         rect: { x: 0, y: 32, w: 32, h: 32 },
         frames: 1,
     },
+    "block-highlight": {
+        name: "block-highlight",
+        rect: { x: 32 * 15, y: 32, w: 32, h: 32 },
+        frames: 1,
+    },
     block: {
         name: "block",
         rect: { x: 0, y: 32, w: 32, h: 32 },

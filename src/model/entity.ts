@@ -27,14 +27,16 @@ export class Entity {
 
     public id: number;
     public type: string = EntityType.BLOCK_1;
-    public pos: V3i = V3i.create(0, 0, 0);
-    public lastPos: V3i = V3i.create(0, 0, 0); 
+    public pos: V3i = V3i.zero;
+    public lastPos: V3i = V3i.zero; 
     public screenPos: V3 = V3.create(0, 0, 0);
     public frames: HTMLCanvasElement[] = [];
     public pickerFrames: HTMLCanvasElement[] = [];
     public frameIndex = 0;
     public frameElapsed = 0;
     public frameDuration = 0;
+    public age = 0; // used for pulses
+    public momentum: V3i = V3i.zero;
 
     constructor(storeInstance = true) {
         if (storeInstance) {
@@ -62,5 +64,13 @@ export class Entity {
 
     public isActor(): boolean {
         return this.type != EntityType.BLOCK_1;
+    }
+
+    public isAffectedByGravity(): boolean {
+        return this.type === "WIZARD" ||
+               this.type === "MIRROR_NE" ||
+               this.type === "MIRROR_SE" ||
+               this.type === "MIRROR_NW" ||
+               this.type === "MIRROR_SW";
     }
 }

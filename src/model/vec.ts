@@ -34,7 +34,11 @@ export class V3i implements V {
     public static right = V3i.create(1, 0, 0);
     public static left = V3i.create(-1, 0, 0);
 
-    constructor(public x: number, public y: number, public z: number, public key: string) {}
+    constructor(public x: number, public y: number, public z: number, public key: string) {
+        if (V3i.instances.has(key)) {
+            throw Error("duplicate v3i being created");
+        }
+    }
 }
 
 export class V3 implements V {

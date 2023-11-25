@@ -324,7 +324,7 @@ export class EditScreen implements Screen {
             return;
         }
 
-        renderSprite(this.g.canvas, this.getOffset(), this.entityAtPoint, sprites['highlight'][0]);
+        renderSprite(this.g.canvas, this.getOffset(), this.entityAtPoint, sprites['block-highlight'][0]);
     }
 
     getOffset(): V3 {

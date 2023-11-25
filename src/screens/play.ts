@@ -17,6 +17,7 @@ const CommandType = {
 interface Command {
     type: string;
     pos?: V3i;
+    dir?: V3i;
 }
 
 interface Transition {
@@ -61,7 +62,7 @@ export class PlayScreen implements Screen {
                     this.inputQueue.unshift(command);
                     return;
                 }
-                this.puzzle.movePlayer(command.pos!);
+                this.puzzle.movePlayer(command.dir!);
                 this.computeTransitions();
                 break;
             case CommandType.UNDO:
@@ -91,7 +92,8 @@ export class PlayScreen implements Screen {
 
     computeTransitions() {
         for (const e of this.puzzle.actors) {
-            if (e.pos != e.lastPos) {
+            console.log(e.pos === e.lastPos);
+            if (e.pos !== e.lastPos) {
                 const t = this.computeTransition1(e);
                 if (t != null) {
                     this.transitions.push(t);
@@ -165,6 +167,7 @@ export class PlayScreen implements Screen {
     }
 
     public init() {
+        this.g.canvas.focus();
         this.addCallbacks();
         for (const e of this.puzzle.v2e.values()) {
             this.renderList.push(e);
@@ -196,9 +199,8 @@ export class PlayScreen implements Screen {
             case "w":
                 this.inputQueue.push({
                     type: CommandType.MOVE,
-                    pos: V3i.add(this.puzzle.player!.pos, V3i.forward)
+                    dir: V3i.forward
                 });
-                this.computeTransitions();
                 e.preventDefault();
                 e.stopPropagation();
                 break;
@@ -206,9 +208,8 @@ export class PlayScreen implements Screen {
             case "s":
                 this.inputQueue.push({
                     type: CommandType.MOVE,
-                    pos: V3i.add(this.puzzle.player!.pos, V3i.back)
+                    dir: V3i.back
                 });
-                this.computeTransitions();
                 e.preventDefault();
                 e.stopPropagation();
                 break;
@@ -216,9 +217,8 @@ export class PlayScreen implements Screen {
             case "a":
                 this.inputQueue.push({
                     type: CommandType.MOVE,
-                    pos: V3i.add(this.puzzle.player!.pos, V3i.left)
+                    dir: V3i.left
                 });
-                this.computeTransitions();
                 e.preventDefault();
                 e.stopPropagation();
                 break;
@@ -226,9 +226,8 @@ export class PlayScreen implements Screen {
             case "d":
                 this.inputQueue.push({
                     type: CommandType.MOVE,
-                    pos: V3i.add(this.puzzle.player!.pos, V3i.right)
+                    dir: V3i.right
                 });
-                this.computeTransitions();
                 e.preventDefault();
                 e.stopPropagation();
                 break;

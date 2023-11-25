@@ -52,17 +52,19 @@ export class Puzzle {
         Entity.deleteEntity(e);
     }
 
-    createEntity(type: string, pos: V3i, frames: HTMLCanvasElement[], frameDuration: number = 0): Entity {
+    createEntity(type: string, pos: V3i): Entity {
+        const { frames, duration } = getSpriteForEntity(type);
+
         this.deleteEntity(pos);
         this.isDirty = true;
 
         const e = new Entity();
         e.type = type;
         e.pos = pos;
-        // slight abstraction leakage here
+        e.lastPos = e.pos;
         e.screenPos = V3.create(pos.x, pos.y, pos.z);
         e.frames = frames;
-        e.frameDuration = frameDuration;
+        e.frameDuration = duration || 0;
         this.v2e.set(e.pos, e);
         if (e.type == EntityType.WIZARD) {
             this.player = e;
@@ -105,13 +107,67 @@ export class Puzzle {
         this.v2e = v2e2;
     }
 
-    movePlayer(pos: V3i) {
-        const player = this.player!;
-        player.lastPos = player.pos;
-        player.pos = pos;
+    getEntityAbove(v: V3i): Entity | null {
+        return this.v2e.get(V3i.add(v, V3i.up)) || null;
     }
 
-    shootBolt(start: V3i, dir: V3i) {
+    getEntityBelow(v: V3i): Entity | null {
+        return this.v2e.get(V3i.add(v, V3i.down)) || null;
+    }
+
+    canMoveActor(e: Entity, dir: V3i): boolean {
+        const next = this.v2e.get(V3i.add(e.pos, dir));
+        if (next == null) { return true; }
+        if (!next.isActor()) { return false; }
+        return this.canMoveActor(next, dir);
+    }
+
+    moveActor(e1: Entity, dir: V3i) {
+        const e2 = this.v2e.get(V3i.add(e1.pos, dir));
+        if (e2 != null) {
+            this.moveActor(e2, dir);
+        }
+        const above = this.getEntityAbove(e1.pos);
+        if (above) {
+            this.moveActor(above, dir);
+        }
+        this.v2e.delete(e1.pos);
+        e1.lastPos = e1.pos;
+        e1.pos = V3i.add(e1.pos, dir);
+        this.v2e.set(e1.pos, e1);
+    }
+
+    applyGravity() {
+        for (const e of this.actors) {
+            if (!e.isAffectedByGravity()) {
+                continue;
+            }
+            const below = this.v2e.get(V3i.add(e.pos, V3i.down));
+            if (below == null) {
+                this.moveActor(e, V3i.down);
+            }
+        }
+    }
+
+    movePlayer(dir: V3i) {
+        const player = this.player!;
+        if (this.canMoveActor(player, dir)) {
+            this.moveActor(player, dir);
+        }
+    }
+
+    shootBolt(start: V3i, dir: V3i): boolean {
+        const e = this.v2e.get(start);
+        if (e == null) {
+            return false;
+        }
+        const bolt = this.createEntity(
+            "BOLT",
+            V3i.add(start, dir),
+        );
+        bolt.momentum = dir;
+        bolt.age = 0;
+        return true;
     }
 
     undo() {
@@ -136,14 +192,7 @@ export class Puzzle {
         p.name = data.name;
         for (const e of data.entities) {
             const v = V3i.create(e.pos[0], e.pos[1], e.pos[2]);
-            const { frames, duration } = getSpriteForEntity(e.type);
-            console.log({
-                type: e.type,
-                pos: v,
-                frames,
-                duration,
-            });
-            p.createEntity(e.type, v, frames, duration);
+            p.createEntity(e.type, v);
         }
         p.init();
         return p;
