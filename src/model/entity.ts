@@ -1,5 +1,10 @@
 import { V3, V3i } from './vec';
 
+export interface SerializedEntity {
+    type: string;
+    pos: number[];
+}
+
 export const EntityType = {
     BLOCK_1: "BLOCK_1",
     BLOCK_2: "BLOCK_2",

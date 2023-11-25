@@ -9,6 +9,7 @@ import { html } from '../ui/html';
 import { Palette } from '../ui/Palette';
 import { PICK_TIMEOUT } from '../model/constants';
 import { PlayScreen } from '../screens/play';
+import { Storage } from '../model/storage';
 
 export interface BrushData {
     type: string;
@@ -48,9 +49,14 @@ export class EditScreen implements Screen {
     public pickTimeout = 0;
     public rotation: number = 0;
 
-    constructor(public g: Game, puzzle = new Puzzle()) {
-        this.init();
+    constructor(public g: Game, puzzle: Puzzle | null) {
+        console.log(puzzle);
+        puzzle = puzzle || new Puzzle();
         this.puzzle = puzzle;
+        for (const e of this.puzzle.v2e.values()) {
+            this.renderList.push(e);
+        }
+        this.init();
     }
 
     public update() {
@@ -190,6 +196,8 @@ export class EditScreen implements Screen {
         }
 
         if (brushData.type === "SAVE") {
+            console.log("saving");
+            Storage.savePuzzle(this.puzzle);
             console.log(this.puzzle.serialize());
             return;
         }

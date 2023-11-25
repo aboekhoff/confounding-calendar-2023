@@ -1,7 +1,15 @@
 import { V3i, V3 } from "./vec";
-import { Entity, EntityType } from "./entity";
-import { setupPickerFrames } from "../game/gfx";
+import { Entity, EntityType, SerializedEntity } from "./entity";
+import { getSpriteForEntity, setupPickerFrames } from "../game/gfx";
 import { rotate } from "./util";
+
+const MAX_INT = 2147483647;
+
+interface SerializedPuzzle {
+    id: string;
+    name: string;
+    entities: SerializedEntity[];
+}
 
 export class Puzzle {
     public name: string = "New Puzzle";
@@ -10,6 +18,14 @@ export class Puzzle {
     public actors: Entity[] = [];
     public history: Entity[][] = [];
     public initialState: Entity[] = [];
+    public id: string;
+    public isDirty: boolean = false;
+
+    constructor() {
+        this.id = ((Math.random() * MAX_INT) | 0).toString(16) + ":" + 
+                  ((Math.random() * MAX_INT) | 0).toString(16) + ":" + 
+                  ((Math.random() * MAX_INT) | 0).toString(16);
+    }
 
     init() {
         this.history.length === 0;
@@ -25,7 +41,21 @@ export class Puzzle {
         this.initialState = this.actors.map(e => e.copy());
     }
 
+    deleteEntity(pos: V3i) {
+        if (!this.v2e.has(pos)) {
+            return;
+        }
+
+        this.isDirty = true;
+        const e = this.v2e.get(pos)!;
+        this.v2e.delete(pos);
+        Entity.deleteEntity(e);
+    }
+
     createEntity(type: string, pos: V3i, frames: HTMLCanvasElement[], frameDuration: number = 0): Entity {
+        this.deleteEntity(pos);
+        this.isDirty = true;
+
         const e = new Entity();
         e.type = type;
         e.pos = pos;
@@ -81,6 +111,9 @@ export class Puzzle {
         player.pos = pos;
     }
 
+    shootBolt(start: V3i, dir: V3i) {
+    }
+
     undo() {
         console.log("UNDO NOT IMPLEMENTED");
     }
@@ -89,11 +122,31 @@ export class Puzzle {
         console.log("RESET NOT IMPLEMENTED");
     }
 
-    serialize() {
+    serialize(): SerializedPuzzle {
         return {
             name: this.name,
-            entities: [...this.v2e.values()].map(e => e.serialize())
+            id: this.id,
+            entities: [...this.v2e.values()].map(e => e.serialize()),
+        };
+    }
+
+    static deserialize(data: SerializedPuzzle): Puzzle {
+        const p = new Puzzle();
+        p.id = data.id;
+        p.name = data.name;
+        for (const e of data.entities) {
+            const v = V3i.create(e.pos[0], e.pos[1], e.pos[2]);
+            const { frames, duration } = getSpriteForEntity(e.type);
+            console.log({
+                type: e.type,
+                pos: v,
+                frames,
+                duration,
+            });
+            p.createEntity(e.type, v, frames, duration);
         }
+        p.init();
+        return p;
     }
 }
 

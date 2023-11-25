@@ -1,12 +1,45 @@
 import { Entity } from "../model/entity";
 import { makeArray2d, i2rgba } from "../model/util";
 
-export const spriteData = {
+interface SpriteData {
+    name: string;
+    rect: { x: number, y: number, w: number, h: number };
+    frames: number;
+    speed?: number;
+} 
+
+export const type2Sprite: Record<string, string> = {
+    "WIZARD": "wiz",
+    "BLOCK_1": "block-1",
+    "BLOCK_2": "block-2",
+    "BLOCK_3": "block-3",
+    "MIRROR_NE": "mirror-ne",
+    "MIRROR_NW": "mirror-nw",
+    "MIRROR_SW": "mirror-sw",
+    "MIRROR_SE": "mirror-se",
+}
+
+export const spriteData: Record<string, SpriteData> = {
     wiz: {
         name: "wiz",
         rect: { x: 0, y: 0, w: 32, h: 32 },
         frames: 16,
         speed: 96,
+    },
+    "block-1": {
+        name: "block-1",
+        rect: { x: 0, y: 32, w: 32, h: 32 },
+        frames: 1,
+    },
+    "block-2": {
+        name: "block-2",
+        rect: { x: 0, y: 32, w: 32, h: 32 },
+        frames: 1,
+    },
+    "block-3": {
+        name: "block-3",
+        rect: { x: 0, y: 32, w: 32, h: 32 },
+        frames: 1,
     },
     block: {
         name: "block",
@@ -167,4 +200,15 @@ export function setupPickerFrames(e: Entity) {
         }
         ctx!.putImageData(imageData, 0, 0);
     }
+}
+
+export function getSpriteForEntity(type: string) {
+    const spriteKey = type2Sprite[type];
+    const { speed } = spriteData[spriteKey];
+    const frames = sprites[spriteKey];
+    console.log({
+        spriteKey,
+        sprites: sprites[spriteKey],
+    })
+    return { frames, duration: speed };
 }
