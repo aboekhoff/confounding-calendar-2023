@@ -7,7 +7,7 @@ export class Storage {
         this.loadManifest();
         const json = localStorage.getItem(id);
         if (json == null) {
-            throw Error(`${id} not found in storage`);
+            return new Puzzle();
         }
         localStorage.setItem("lastPuzzle", id);
         const data = JSON.parse(json);

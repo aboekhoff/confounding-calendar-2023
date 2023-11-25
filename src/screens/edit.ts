@@ -14,7 +14,6 @@ import { Storage } from '../model/storage';
 export interface BrushData {
     type: string;
     sprite: HTMLCanvasElement;
-
 } 
 
 interface Prototype {
@@ -125,7 +124,6 @@ export class EditScreen implements Screen {
 
     public setupBrushes() {
         this.brushes = [
-            
             { type: "ERASER", sprite: sprites["eraser"][0] },
             { type: "WIZARD", sprite: sprites["wiz"][0] },
             { type: "BLOCK_1", sprite: sprites["block"][0] },
@@ -135,6 +133,7 @@ export class EditScreen implements Screen {
             { type: "MIRROR_SW", sprite: sprites["mirror-sw"][0] },
             { type: "MIRROR_NW", sprite: sprites["mirror-nw"][0] },
             { type: "MIRROR_NE", sprite: sprites["mirror-ne"][0] },
+            { type: "EXIT", sprite: sprites["exit"][0] },
         ];
     }
 
@@ -236,12 +235,9 @@ export class EditScreen implements Screen {
     }
 
     createEntity(type: string, pos: V3i) {
-        const prototype = this.prototypes[type];
         const e = this.puzzle.createEntity(
             type,
             pos,
-            prototype.frames,
-            prototype.frameDuration || 0
         );
         this.renderList.push(e);
         this.sortRenderList();

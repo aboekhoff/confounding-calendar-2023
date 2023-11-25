@@ -63,7 +63,11 @@ export class Entity {
     }
 
     public isActor(): boolean {
-        return this.type != EntityType.BLOCK_1;
+        return this.type === "WIZARD" ||
+               this.type === "MIRROR_NE" ||
+               this.type === "MIRROR_SE" ||
+               this.type === "MIRROR_NW" ||
+               this.type === "MIRROR_SW";
     }
 
     public isAffectedByGravity(): boolean {

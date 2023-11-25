@@ -92,13 +92,20 @@ export class PlayScreen implements Screen {
 
     computeTransitions() {
         for (const e of this.puzzle.actors) {
-            console.log(e.pos === e.lastPos);
             if (e.pos !== e.lastPos) {
                 const t = this.computeTransition1(e);
                 if (t != null) {
                     this.transitions.push(t);
                 }
             }
+        }
+
+        if (this.puzzle.isGameOver()) {
+            return;
+        }
+
+        if (this.puzzle.tick()) {
+            this.computeTransitions();
         }
     }
 

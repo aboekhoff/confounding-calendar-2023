@@ -137,16 +137,24 @@ export class Puzzle {
         this.v2e.set(e1.pos, e1);
     }
 
-    applyGravity() {
-        for (const e of this.actors) {
-            if (!e.isAffectedByGravity()) {
-                continue;
-            }
-            const below = this.v2e.get(V3i.add(e.pos, V3i.down));
-            if (below == null) {
-                this.moveActor(e, V3i.down);
-            }
+    applyGravity(e: Entity): boolean {
+        if (!e.isAffectedByGravity()) {
+            return false;
         }
+        const below = this.v2e.get(V3i.add(e.pos, V3i.down));
+        if (below == null) {
+            this.moveActor(e, V3i.down);
+            return true;
+        }
+        return false;
+    }
+
+    // let's make lots of ways to die eventually
+    // reflect your bolt onto yourself
+    // get crushed
+    // lots of fun things
+    isGameOver() {
+        return this.player!.pos.z < 0;
     }
 
     movePlayer(dir: V3i) {
@@ -154,6 +162,20 @@ export class Puzzle {
         if (this.canMoveActor(player, dir)) {
             this.moveActor(player, dir);
         }
+    }
+
+    public tick(): boolean {
+        let ticked = false;
+        for (const e of this.actors) {
+            if (e.momentum === V3i.zero) { continue; }
+            // apply momentum SOON
+        }
+
+        for (const e of this.actors) {
+            ticked = ticked || this.applyGravity(e);
+        }
+
+        return ticked;
     }
 
     shootBolt(start: V3i, dir: V3i): boolean {

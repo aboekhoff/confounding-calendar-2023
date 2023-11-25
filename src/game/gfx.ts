@@ -17,6 +17,7 @@ export const type2Sprite: Record<string, string> = {
     "MIRROR_NW": "mirror-nw",
     "MIRROR_SW": "mirror-sw",
     "MIRROR_SE": "mirror-se",
+    "EXIT": "exit",
 }
 
 export const spriteData: Record<string, SpriteData> = {
@@ -130,6 +131,12 @@ export const spriteData: Record<string, SpriteData> = {
         name: "mirror-ne",
         rect: { x: 32, y: 64 + 32 + 32 + 16, w: 32, h: 32},
         frames: 1,
+    },
+    "exit": {
+        name: "exit",
+        rect: { x: 0, y: 64 + 32 * 3 + 16, w: 32, h: 32 },
+        frames: 6,
+        speed: 256,
     }
 }
 
