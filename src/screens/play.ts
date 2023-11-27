@@ -181,6 +181,7 @@ export class PlayScreen implements Screen {
         switch (command.type) {
             case CommandType.NEXT:
                 this.loadNextPuzzle();
+                break;
             case CommandType.MOVE:
                 if (this.puzzle.isGameOver()) {
                     return;
