@@ -7,6 +7,8 @@ import { Puzzle } from '../model/puzzle';
 import { BOUNCE_FACTOR, SCALE } from '../model/constants';
 import { EditScreen } from '../screens/edit';
 import { Storage } from '../model/storage';
+import { Howl } from 'howler';
+import { Audio, SoundType } from '../game/audio';
 
 const CommandType = {
     MOVE: 'MOVE',
@@ -62,6 +64,7 @@ export class PlayScreen implements Screen {
     public transitions: Transition[] = [];
     public history: Entity[][] = [];
     public textEntities: SpriteEntity[] = [];
+    public sound: Howl | null  = null;
 
     constructor(public g: Game, puzzle: Puzzle) {
         this.puzzle = puzzle;
@@ -98,7 +101,6 @@ export class PlayScreen implements Screen {
     public loadNextPuzzle() {
         this.g.popScreen();
         const nextPuzzle = Storage.loadPuzzleByName(this.puzzle.next);
-        console.log(nextPuzzle);
         if (nextPuzzle === null) {
             // game over sequence?
         } else {
@@ -117,6 +119,7 @@ export class PlayScreen implements Screen {
         }
         else if (this.puzzle.didPlayerWin()) {
             this.mode = Mode.WIN;
+            Audio.play(SoundType.SPARKLE);
             this.showText("frotz!<br>press space<br>to continue");
         }
     }
@@ -295,6 +298,29 @@ export class PlayScreen implements Screen {
                 e.playbackMode = t.sprite.mode || "LOOP";
             }
 
+            const e = (t.e as Entity);
+            if (t.elapsed === 0 && e.type) {
+                if (e.type === EntityType.WIZARD) {
+                    const dir = V3i.sub(t.end, t.start);
+                    if (dir.z === 0) {
+                        Audio.play(SoundType.STEP);
+                    }
+                }
+
+                if (e.type === EntityType.BOX) {
+                    const dir = V3i.sub(t.end, t.start);
+                    if (dir.z === 0) {
+                        Audio.play(SoundType.BOX);
+                    }
+                }
+
+                if (e.type === EntityType.PULSE) {
+                    if (e.age === 1) {
+                        Audio.play(SoundType.PULSE);
+                    }
+                }
+            }
+
             t.elapsed += this.g.dt;
             this.processTransition1(t);
             if (t.elapsed >= t.duration) {
@@ -356,10 +382,16 @@ export class PlayScreen implements Screen {
         if (this.puzzle.hint) {
             this.showText(this.puzzle.hint);
         }
+        this.sound = new Howl({
+            src: ["theme.wav"],
+            loop: true,
+        });
+        this.sound.once('load', () => this.sound!.play());
     }
 
     onExit = () => {
         this.removeCallbacks();
+        if (this.sound) { this.sound.stop(); }
     }
 
     onKeyDown = (e: KeyboardEvent) => {
