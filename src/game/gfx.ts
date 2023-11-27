@@ -1,5 +1,6 @@
 import { Entity, PlaybackMode } from "../model/entity";
 import { makeArray2d, i2rgba } from "../model/util";
+import { IS_PROD } from "../model/constants";
 
 export interface SpriteData {
     name: string;
@@ -205,7 +206,12 @@ export function loadSprites(loadedCallback: () => void) {
       setupFont();
       loadedCallback();  
     }
-    img.src = "/spritesheet.png";
+
+    if (IS_PROD) {
+        img.src = "assets/spritesheet.png"
+    } else {
+        img.src = "/spritesheet.png";
+    }
 }
 
 function computeSpriteAlpha(c: HTMLCanvasElement) {

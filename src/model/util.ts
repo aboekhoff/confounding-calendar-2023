@@ -1,4 +1,4 @@
-import { V3, V3i, V } from './vec';
+import { V3, V } from './vec';
 import { RNG_SEED } from './constants';
 
 export function makeArray2d<T>(w: number, h: number, fill: T) {
@@ -39,7 +39,7 @@ export function i2rgba(i: number): number[] {
     return [r, g, b, 0];
 }
 
-export function rgba2i(r: number, g: number, b: number, a: number) {
+export function rgba2i(r: number, g: number, b: number, _: number) {
     return r | (g << 8) | (b << 16);
 }
 
@@ -57,7 +57,6 @@ export function throttle(f: Function, ms: number) {
 }
 
 export function rotate90(min: V3, max: V3, pos: V): V3 {
-    const spanX = max.x - min.x;
     const spanY = max.y - min.y;    
     const normX = pos.x - min.x;
     const normY = pos.y - min.y;

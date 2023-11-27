@@ -17,3 +17,6 @@ export const PICK_TIMEOUT = 500;
 
 // gmaeplay
 export const PULSE_LIFETIME = 16;
+
+// builds
+export const IS_PROD = true;

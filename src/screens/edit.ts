@@ -24,11 +24,13 @@ interface Prototype {
     frameDuration?: number;
 }
 
+/*
 const EditType = {
     CREATE: 'CREATE',
     DELETE: 'DELETE',
     REPLACE: 'REPLACE',
 };
+*/
 
 interface Edit {
     type: string,
@@ -183,6 +185,10 @@ export class EditScreen implements Screen {
         switch (e.key) {
             case "Escape":
                 this.showFolder = false;
+                break;
+            case "F10":
+                console.log(JSON.stringify(Storage.export(), null, 2));
+                break;
         }
     }
 

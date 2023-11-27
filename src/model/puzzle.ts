@@ -6,7 +6,7 @@ import { PULSE_LIFETIME } from '../model/constants';
 
 const MAX_INT = 2147483647;
 
-interface SerializedPuzzle {
+export interface SerializedPuzzle {
     id: string;
     name: string;
     next: string;

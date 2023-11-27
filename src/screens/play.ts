@@ -1,4 +1,4 @@
-import { font2, getSpriteForEntity, spriteData, sprites } from '../game/gfx';
+import { font2, sprites } from '../game/gfx';
 import { Game, Screen } from '../game/game';
 import { renderEntities, renderSprite, pick, renderFlatSprite } from '../game/render';
 import { V3, V3i } from '../model/vec';
@@ -7,7 +7,6 @@ import { Puzzle } from '../model/puzzle';
 import { BOUNCE_FACTOR, SCALE } from '../model/constants';
 import { EditScreen } from '../screens/edit';
 import { Storage } from '../model/storage';
-import { Howl } from 'howler';
 import { Audio, SoundType } from '../game/audio';
 
 const CommandType = {
@@ -64,10 +63,10 @@ export class PlayScreen implements Screen {
     public transitions: Transition[] = [];
     public history: Entity[][] = [];
     public textEntities: SpriteEntity[] = [];
-    public sound: Howl | null  = null;
 
     constructor(public g: Game, puzzle: Puzzle) {
         this.puzzle = puzzle;
+        console.log(this.puzzle);
         this.init();    
     }
 
@@ -129,8 +128,8 @@ export class PlayScreen implements Screen {
     }
 
     public showText(text: string) {
+        this.textEntities.length = 0;
         const lines = text.trim().split('<br>');
-        console.log(lines);
         for (let i = 0; i < lines.length; i++) {
             this.showText1(lines[i].trim().toLowerCase(), lines.length - 1 - i);
         }
@@ -383,16 +382,11 @@ export class PlayScreen implements Screen {
         if (this.puzzle.hint) {
             this.showText(this.puzzle.hint);
         }
-        this.sound = new Howl({
-            src: ["theme.wav"],
-            loop: true,
-        });
-        this.sound.once('load', () => this.sound!.play());
+        Audio.playTheme();
     }
 
     onExit = () => {
         this.removeCallbacks();
-        if (this.sound) { this.sound.stop(); }
     }
 
     onKeyDown = (e: KeyboardEvent) => {
@@ -493,11 +487,11 @@ export class PlayScreen implements Screen {
         }
     }
 
-    onMouseMove = (e: MouseEvent) => {
+    onMouseMove = (_: MouseEvent) => {
         // this.entityAtPoint = this.computeEntityAtPoint(e.clientX, e.clientY);
     }
 
-    onMouseDown = (e: MouseEvent) => {
+    onMouseDown = (_: MouseEvent) => {
         // FIXME NEED PATHFINDING FOR THIS TO WORK
         /*
         this.entityAtPoint = this.computeEntityAtPoint(e.clientX, e.clientY);
