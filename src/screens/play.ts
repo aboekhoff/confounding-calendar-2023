@@ -1,17 +1,33 @@
-import { sprites } from '../game/gfx';
+import { font2, getSpriteForEntity, spriteData, sprites } from '../game/gfx';
 import { Game, Screen } from '../game/game';
-import { renderEntities, renderSprite, pick } from '../game/render';
+import { renderEntities, renderSprite, pick, renderFlatSprite } from '../game/render';
 import { V3, V3i } from '../model/vec';
-import { Entity, EntityType } from '../model/entity';
+import { Entity, EntityType, PlaybackMode } from '../model/entity';
 import { Puzzle } from '../model/puzzle';
-import { BOUNCE_FACTOR } from '../model/constants';
+import { BOUNCE_FACTOR, SCALE } from '../model/constants';
+import { EditScreen } from '../screens/edit';
+import { Storage } from '../model/storage';
 
 const CommandType = {
     MOVE: 'MOVE',
+    FIRE: 'FIRE',
     UNDO: 'UNDO',
     RESET: 'RESET',
+    NEXT: "NEXT",
     ACTION_1: 'ACTION_1',
     ACTION_2: 'ACTION_2',
+};
+
+export const Mode = {
+    PLAY: "PLAY",
+    GAMEOVER: "GAMEOVER",
+    WIN: "WIN",
+}
+
+interface SpriteEntity {
+    sprite: HTMLCanvasElement;
+    screenPos: V3;
+    destroyed?: boolean;
 };
 
 interface Command {
@@ -21,22 +37,31 @@ interface Command {
 }
 
 interface Transition {
-    e: Entity;
+    e: Entity | SpriteEntity;
     start: V3;
     end: V3;
     elapsed: number;
     duration: number;
     bounce: boolean;
+    destroy?: boolean;
+    sprite?: SpriteData;
+}
+
+interface SpriteData {
+    frames: HTMLCanvasElement[];
+    duration?: number;
+    mode?: string;
 }
 
 export class PlayScreen implements Screen {
-    public offset: number = 0;
+    public mode: string = "PLAY";
     public puzzle: Puzzle = new Puzzle();
     public renderList: Entity[] = [];
     public entityAtPoint: Entity | null = null;
     public inputQueue: Command[] = [];
     public transitions: Transition[] = [];
     public history: Entity[][] = [];
+    public textEntities: SpriteEntity[] = [];
 
     constructor(public g: Game, puzzle: Puzzle) {
         this.puzzle = puzzle;
@@ -44,9 +69,106 @@ export class PlayScreen implements Screen {
     }
 
     public update() {
-        this.processTransitions();
-        this.updateAnimations();
-        this.handleInput();
+        switch (this.mode) {
+            case Mode.PLAY:
+                this.processTransitions();
+                if (this.transitions.length === 0 && this.puzzle.tick()) { 
+                    this.computeTransitions(); 
+                };
+                this.updateAnimations();
+                this.handleInput();
+                this.checkGameOver();
+                break;
+            case Mode.GAMEOVER:
+                this.processTransitions();
+                if (this.transitions.length === 0) { this.puzzle.tick() };
+                this.updateAnimations();
+                this.handleInput();
+                break;
+            case Mode.WIN:
+                // load next puzzle, and we're basically playable
+                // for some definition of playable
+                this.processTransitions();
+                this.updateAnimations();
+                this.handleInput();
+                break;
+        }
+    }
+
+    public loadNextPuzzle() {
+        this.g.popScreen();
+        const nextPuzzle = Storage.loadPuzzleByName(this.puzzle.next);
+        console.log(nextPuzzle);
+        if (nextPuzzle === null) {
+            // game over sequence?
+        } else {
+            this.g.pushScreen(new PlayScreen(this.g, nextPuzzle));    
+        }
+    }
+
+    public checkGameOver() {
+        if (this.puzzle.didPlayerLose()) {
+            this.mode = Mode.GAMEOVER;
+            this.showText(`
+            you died :(<br>
+            press z to undo<br>
+            press r to restart
+            `);
+        }
+        else if (this.puzzle.didPlayerWin()) {
+            this.mode = Mode.WIN;
+            this.showText("frotz!<br>press space<br>to continue");
+        }
+    }
+
+    public clearText() {
+        this.textEntities.length = 0;    
+    }
+
+    public showText(text: string) {
+        const lines = text.trim().split('<br>');
+        console.log(lines);
+        for (let i = 0; i < lines.length; i++) {
+            this.showText1(lines[i].trim().toLowerCase(), lines.length - 1 - i);
+        }
+    }
+
+    public showText1(text: string, offsetZ = 0) {
+        console.log(text)
+        const fontWidth = font2['a'].width * SCALE;
+        const fontHeight = font2['a'].height * SCALE;
+        const textWidth = (text.length/2) * fontWidth;
+        const offset = this.getOffset();
+        const startPos = V3.create(offset.x - (textWidth * fontWidth), (offset.y) - (offset.y/2) - (offsetZ * fontHeight), 0);
+        let curPos = startPos;
+
+        for (let x = 0; x < text.length; x++) {
+            const pos = V3.create((offset.x - textWidth) + (fontWidth * x), curPos.y, 0);
+            const angle = Math.random() * Math.PI * 2;
+            const lastPosX = pos.x + (Math.cos(angle) * fontWidth * 10);
+            const lastPosY = pos.y + (Math.sin(angle) * fontWidth * 10); 
+            const lastPos = V3i.create(lastPosX, lastPosY, 0);
+            const screenPos = V3.create(lastPos.x, lastPos.y, 0);
+
+            const te = {
+                pos: V3.create(curPos.x, curPos.y, curPos.z),
+                screenPos: V3.create(lastPos.x, lastPos.y, lastPos.z),
+                lastPos,
+                sprite: font2[text[x]]
+            };
+
+            const transition = {
+                e: te,
+                start: screenPos,
+                end: pos,
+                elapsed: 0,
+                duration: 600,
+                bounce: false,
+            }
+
+            this.textEntities.push(te);
+            this.transitions.push(transition);
+        }
     }
 
     public handleInput() {
@@ -57,7 +179,12 @@ export class PlayScreen implements Screen {
         const command = this.inputQueue.shift()!;
 
         switch (command.type) {
+            case CommandType.NEXT:
+                this.loadNextPuzzle();
             case CommandType.MOVE:
+                if (this.puzzle.isGameOver()) {
+                    return;
+                }
                 if (this.transitions.length > 0) {
                     this.inputQueue.unshift(command);
                     return;
@@ -65,15 +192,36 @@ export class PlayScreen implements Screen {
                 this.puzzle.movePlayer(command.dir!);
                 this.computeTransitions();
                 break;
+            case CommandType.FIRE:
+                const pos2 = V3i.add(this.puzzle.player!.pos, command.dir!);
+                if (this.puzzle.isGameOver()) {
+                    return;
+                }
+                if (this.transitions.length > 0) {
+                    this.inputQueue.unshift(command);
+                    return;
+                }
+                if (this.puzzle.v2e.get(pos2) != null) {
+                    return;
+                }
+                const e = this.puzzle.createEntity(EntityType.PULSE, pos2);
+                e.momentum = command.dir!;
+                this.renderList.push(e);
+                this.computeTransitions();
+                break;
             case CommandType.UNDO:
                 this.puzzle.undo();
                 this.transitions.length = 0;
+                this.clearText();
                 this.resetScreenPositions();
+                this.mode = Mode.PLAY;
                 break;
             case CommandType.RESET:
                 this.puzzle.reset();
                 this.transitions.length = 0;
+                this.clearText();
                 this.resetScreenPositions();
+                this.mode = Mode.PLAY;
                 break;
             default:
         }
@@ -99,33 +247,38 @@ export class PlayScreen implements Screen {
                 }
             }
         }
-
-        if (this.puzzle.isGameOver()) {
-            return;
-        }
-
-        if (this.puzzle.tick()) {
-            this.computeTransitions();
-        }
     }
 
     computeTransition1(e: Entity): Transition | null {
+        e.lastPos = e.pos;
         if (e.type === EntityType.WIZARD) {
             return {
                 e,
                 start: e.screenPos,
                 end: e.pos,
-                duration: 300,
+                duration: 200,
                 elapsed: 0,
                 bounce: true,
             };
+        }
+
+        if (e.type === EntityType.PULSE) {
+            const t = {
+                e,
+                start: e.screenPos,
+                end: e.pos,
+                duration: 50,
+                elapsed: 0,
+                bounce: true,
+            };
+            return t;
         }
 
         return {
             e,
             start: e.screenPos,
             end: e.pos,
-            duration: 300,
+            duration: 200,
             elapsed: 0,
             bounce: false,
         };
@@ -135,6 +288,13 @@ export class PlayScreen implements Screen {
         const done = new Set<Transition>();
 
         for (const t of this.transitions) {
+            if (t.elapsed === 0 && t.sprite) {
+                const e = (t.e as Entity);
+                e.frames = t.sprite.frames;
+                e.frameDuration = t.sprite.duration!;
+                e.playbackMode = t.sprite.mode || "LOOP";
+            }
+
             t.elapsed += this.g.dt;
             this.processTransition1(t);
             if (t.elapsed >= t.duration) {
@@ -158,8 +318,22 @@ export class PlayScreen implements Screen {
         if (t.bounce) {
             bounciness = time < 0.5 ? time * BOUNCE_FACTOR : (1-time) * BOUNCE_FACTOR;
         }
-        delta.z += bounciness;
-        t.e.screenPos = V3.add(t.start, delta);
+        if (time >= 1) {
+            t.e.screenPos = t.end;
+
+            if (t.e.destroyed) {
+                this.puzzle.v2e.delete((t.e as Entity).pos);
+                const idx = this.renderList.indexOf((t.e as Entity));
+                if (idx != -1) {
+                    this.renderList.splice(idx, 1);
+                }
+            }
+
+        } else {
+            delta.z += bounciness;
+            t.e.screenPos = V3.add(t.start, delta);
+        }
+
     }
 
     resetScreenPositions() {
@@ -179,6 +353,9 @@ export class PlayScreen implements Screen {
         for (const e of this.puzzle.v2e.values()) {
             this.renderList.push(e);
         }
+        if (this.puzzle.hint) {
+            this.showText(this.puzzle.hint);
+        }
     }
 
     onExit = () => {
@@ -186,18 +363,22 @@ export class PlayScreen implements Screen {
     }
 
     onKeyDown = (e: KeyboardEvent) => {
-        console.log(e.key);
         switch (e.key) {
+            case " ":
+                if (this.puzzle.didPlayerWin()) {
+                    this.inputQueue.push({
+                        type: CommandType.NEXT,
+                    });
+                }
+                break;
             case "]":
-                this.puzzle.rotate(false);
+                this.puzzle.rotateRight(false);
                 this.computeTransitionsAll();
                 e.preventDefault();
                 e.stopPropagation();
                 break;
             case "[":
-                this.puzzle.rotate(false);
-                this.puzzle.rotate(false);
-                this.puzzle.rotate(false);
+                this.puzzle.rotateLeft(false);
                 this.computeTransitionsAll();
                 e.preventDefault();
                 e.stopPropagation();
@@ -208,7 +389,6 @@ export class PlayScreen implements Screen {
                     type: CommandType.MOVE,
                     dir: V3i.forward
                 });
-                e.preventDefault();
                 e.stopPropagation();
                 break;
             case "ArrowDown":
@@ -217,7 +397,6 @@ export class PlayScreen implements Screen {
                     type: CommandType.MOVE,
                     dir: V3i.back
                 });
-                e.preventDefault();
                 e.stopPropagation();
                 break;
             case "ArrowLeft":
@@ -226,7 +405,6 @@ export class PlayScreen implements Screen {
                     type: CommandType.MOVE,
                     dir: V3i.left
                 });
-                e.preventDefault();
                 e.stopPropagation();
                 break;
             case "ArrowRight":
@@ -235,17 +413,60 @@ export class PlayScreen implements Screen {
                     type: CommandType.MOVE,
                     dir: V3i.right
                 });
-                e.preventDefault();
                 e.stopPropagation();
+                break;
+            case "z":
+                this.inputQueue.push({
+                    type: CommandType.UNDO,
+                });
+                e.stopPropagation();
+                break;
+            case "r":
+                this.inputQueue.push({
+                    type: CommandType.RESET,
+                });
+                e.stopPropagation();
+                break;
+            case "F10":
+                this.puzzle.reset();
+                this.puzzle.history.length = 0;
+                this.g.popScreen();
+                this.g.pushScreen(new EditScreen(this.g, this.puzzle));
+                break;
+            case "i":
+                this.inputQueue.push({
+                    type: CommandType.FIRE,
+                    dir: V3i.forward,
+                });
+                break;
+            case "j":
+                this.inputQueue.push({
+                    type: CommandType.FIRE,
+                    dir: V3i.left,
+                });
+                break;
+            case "k":
+                this.inputQueue.push({
+                    type: CommandType.FIRE,
+                    dir: V3i.back,
+                });
+                break;
+            case "l":
+                this.inputQueue.push({
+                    type: CommandType.FIRE,
+                    dir: V3i.right,
+                });
                 break;
         }
     }
 
     onMouseMove = (e: MouseEvent) => {
-        this.entityAtPoint = this.computeEntityAtPoint(e.clientX, e.clientY);
+        // this.entityAtPoint = this.computeEntityAtPoint(e.clientX, e.clientY);
     }
 
     onMouseDown = (e: MouseEvent) => {
+        // FIXME NEED PATHFINDING FOR THIS TO WORK
+        /*
         this.entityAtPoint = this.computeEntityAtPoint(e.clientX, e.clientY);
         if (this.entityAtPoint) {
             this.inputQueue.push({
@@ -253,6 +474,7 @@ export class PlayScreen implements Screen {
                 pos: V3i.add(this.entityAtPoint.pos, V3i.up),
             });
         }
+        */
     }
 
     onContextMenu = (e: MouseEvent) => {
@@ -281,8 +503,12 @@ export class PlayScreen implements Screen {
             if (e.frameDuration === 0) { continue; }
             e.frameElapsed += dt;
             if (e.frameElapsed >= e.frameDuration) {
-                e.frameElapsed = e.frameElapsed % e.frameDuration;
-                e.frameIndex = (e.frameIndex + 1) % e.frames.length;
+                if (e.playbackMode === PlaybackMode.LOOP) {
+                    e.frameElapsed = e.frameElapsed % e.frameDuration;
+                    e.frameIndex = (e.frameIndex + 1) % e.frames.length;
+                } else {
+                    e.frameIndex = e.frames.length - 1;
+                }
             }
         }
     }
@@ -293,6 +519,13 @@ export class PlayScreen implements Screen {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         this.renderEntities();
         this.renderHighlight();
+        this.renderText();
+    }
+
+    renderText() {
+        this.textEntities.forEach(e => {
+            renderFlatSprite(this.g.canvas, e.sprite, e.screenPos.x, e.screenPos.y);
+        });
     }
 
     public sortRenderList() {

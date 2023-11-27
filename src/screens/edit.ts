@@ -7,6 +7,8 @@ import { Puzzle } from '../model/puzzle';
 import * as preact from 'preact';
 import { html } from '../ui/html';
 import { Palette } from '../ui/Palette';
+import { Folder } from '../ui/Folder';
+import { PuzzleInspector } from '../ui/PuzzleInspector'
 import { PICK_TIMEOUT } from '../model/constants';
 import { PlayScreen } from '../screens/play';
 import { Storage } from '../model/storage';
@@ -47,20 +49,24 @@ export class EditScreen implements Screen {
     public prototypes: Record<string, Prototype> = {};
     public pickTimeout = 0;
     public rotation: number = 0;
+    public showFolder: boolean = false;
 
     constructor(public g: Game, puzzle: Puzzle | null) {
-        console.log(puzzle);
         puzzle = puzzle || new Puzzle();
         this.puzzle = puzzle;
-        for (const e of this.puzzle.v2e.values()) {
-            this.renderList.push(e);
-        }
         this.init();
     }
 
     public update() {
         this.pickTimeout -= this.g.dt;
         this.updateAnimations();
+    }
+
+    loadPuzzle = (id: string) => {
+        Entity.clear();
+        this.renderList.length = 0;
+        this.puzzle = Storage.loadPuzzle(id);
+        this.init();
     }
 
     resetScreenPositions() {
@@ -83,6 +89,9 @@ export class EditScreen implements Screen {
     }
 
     public init() {
+        for (const e of this.puzzle.v2e.values()) {
+            this.renderList.push(e);
+        }
         this.addCallbacks();
         this.addBaseEntities();
         // doing this here because sprites need to be loaded
@@ -111,11 +120,12 @@ export class EditScreen implements Screen {
 
     public setupTools() {
         this.tools = [
-            { type: "ROTATE_RIGHT", sprite: sprites["rotate-right"][0] },
-            { type: "ROTATE_LEFT", sprite: sprites["rotate-left"][0] },
+            { type: "ROTATE_LEFT", sprite: sprites["rotate-right"][0] },
+            { type: "ROTATE_RIGHT", sprite: sprites["rotate-left"][0] },
             { type: "PLAY", sprite: sprites["play"][0] },
             { type: "SAVE", sprite: sprites["save"][0] },
             { type: "FOLDER", sprite: sprites["folder"][0] },
+            { type: "PLUS", sprite: sprites["plus"][0] },
             { type: "COPY", sprite: sprites["copy"][0] },
             { type: "UNDO", sprite: sprites["undo"][0] },
             { type: "REDO", sprite: sprites["redo"][0] },
@@ -134,6 +144,7 @@ export class EditScreen implements Screen {
             { type: "MIRROR_NW", sprite: sprites["mirror-nw"][0] },
             { type: "MIRROR_NE", sprite: sprites["mirror-ne"][0] },
             { type: "EXIT", sprite: sprites["exit"][0] },
+            { type: "BOX", sprite: sprites["box"][0] },
         ];
     }
 
@@ -157,13 +168,22 @@ export class EditScreen implements Screen {
     addCallbacks() {
         this.g.canvas.addEventListener('mousemove', this.onMouseMove);
         this.g.canvas.addEventListener('mousedown', this.onMouseDown);
+        this.g.canvas.addEventListener('keydown', this.onKeyDown);
         this.g.canvas.oncontextmenu = this.onContextMenu;
     }
 
     removeCallbacks() {
         this.g.canvas.removeEventListener('mousemove', this.onMouseMove);
         this.g.canvas.removeEventListener('mousedown', this.onMouseDown);
+        this.g.canvas.removeEventListener('keydown', this.onKeyDown);
         this.g.canvas.oncontextmenu = null;
+    }
+
+    onKeyDown = (e: KeyboardEvent) => {
+        switch (e.key) {
+            case "Escape":
+                this.showFolder = false;
+        }
     }
 
     onMouseMove = (e: MouseEvent) => {
@@ -180,16 +200,25 @@ export class EditScreen implements Screen {
     handlePaletteClick = (brushData: BrushData) => {
         this.activeBrush = null;
 
+        if (brushData.type === "FOLDER") {
+            this.showFolder = true;
+            return;
+        }
+
+        if (brushData.type === "PLUS") {
+            this.puzzle = new Puzzle();
+            this.renderList.length = 0;
+            this.init();
+        }
+
         if (brushData.type === "ROTATE_RIGHT") {
-            this.puzzle.rotate();
+            this.puzzle.rotateRight();
             this.sortRenderList();
             return;
         }
 
         if (brushData.type === "ROTATE_LEFT") {
-            this.puzzle.rotate();
-            this.puzzle.rotate();
-            this.puzzle.rotate();
+            this.puzzle.rotateLeft();
             this.sortRenderList();
             return;
         }
@@ -216,8 +245,6 @@ export class EditScreen implements Screen {
             return;
         }
 
-        console.log(this.activeBrush);
-
         if (this.activeBrush!.type === "ERASER") {
             if (!this.puzzle.v2e.has(this.entityAtPoint.pos)) {
                 return;
@@ -225,11 +252,6 @@ export class EditScreen implements Screen {
             this.deleteEntity(this.entityAtPoint);
             return;
         }
-
-        console.log("CREATING");
-        console.log(this.entityAtPoint.pos);
-        console.log(V3i.up);
-        console.log(V3i.add(this.entityAtPoint.pos, V3i.up));
 
         this.createEntity(this.activeBrush?.type!, V3i.add(this.entityAtPoint.pos, V3i.up));
     }
@@ -293,10 +315,19 @@ export class EditScreen implements Screen {
             activeBrush: this.activeBrush,
             handleClick: this.handlePaletteClick,
         });
+        const puzzleInspector = PuzzleInspector({
+            puzzle: this.puzzle,
+        });
+        const folder = this.showFolder && Folder({
+            puzzles: Storage.getPuzzleList(),
+            handleClick: this.loadPuzzle,
+        });
         const dom = html`
             <div class="EditorUi">
                 ${tools}
                 ${palette}
+                ${folder}
+                ${puzzleInspector}
             </div>
         `
         preact.render(dom, document.body);

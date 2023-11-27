@@ -1,4 +1,12 @@
+import { getSpriteForEntity, setupPickerFrames } from '../game/gfx';
 import { V3, V3i } from './vec';
+
+const ROTATIONS: Record<string, string> = {
+    "NE": "SE",
+    "SE": "SW",
+    "SW": "NW",
+    "NW": "NE",
+};
 
 export interface SerializedEntity {
     type: string;
@@ -15,7 +23,17 @@ export const EntityType = {
     MIRROW_NW: "MIRROR_NW",
     WIZARD: "WIZARD",
     PULSE: "PULSE",
+    EXIT: "EXIT",
+    BOX: "BOX",
+    FONT: "FONT",
 }
+
+export const PlaybackMode = {
+    LOOP: "LOOP",
+    ONCE: "ONCE",
+    PINGPONG_FORWARD: "PINGPONG_FORWARD",
+    PINGPONG_BACKWARD: "PINGPONG_BACKWARD",
+};
 
 export class Entity {
     static nextId = 1;
@@ -25,11 +43,16 @@ export class Entity {
         this.byId.delete(e.id);
     } 
 
+    public static clear() {
+        this.byId.clear();
+    }
+
     public id: number;
     public type: string = EntityType.BLOCK_1;
     public pos: V3i = V3i.zero;
     public lastPos: V3i = V3i.zero; 
     public screenPos: V3 = V3.create(0, 0, 0);
+    public playbackMode: string = PlaybackMode.LOOP;
     public frames: HTMLCanvasElement[] = [];
     public pickerFrames: HTMLCanvasElement[] = [];
     public frameIndex = 0;
@@ -37,6 +60,7 @@ export class Entity {
     public frameDuration = 0;
     public age = 0; // used for pulses
     public momentum: V3i = V3i.zero;
+    public destroyed: boolean = false;
 
     constructor(storeInstance = true) {
         if (storeInstance) {
@@ -67,7 +91,9 @@ export class Entity {
                this.type === "MIRROR_NE" ||
                this.type === "MIRROR_SE" ||
                this.type === "MIRROR_NW" ||
-               this.type === "MIRROR_SW";
+               this.type === "MIRROR_SW" ||
+               this.type === "BOX" ||
+               this.type === "PULSE"
     }
 
     public isAffectedByGravity(): boolean {
@@ -75,6 +101,26 @@ export class Entity {
                this.type === "MIRROR_NE" ||
                this.type === "MIRROR_SE" ||
                this.type === "MIRROR_NW" ||
+               this.type === "MIRROR_SW" ||
+               this.type === "BOX";
+    }
+
+    public hasOrientation(): boolean {
+        return this.type === "MIRROR_NE" ||
+               this.type === "MIRROR_SE" ||
+               this.type === "MIRROR_NW" ||
                this.type === "MIRROR_SW";
+    }
+
+    public rotate() {
+        const [prefix, suffix] = this.type.split("_");
+        this.type = prefix + "_" + ROTATIONS[suffix];
+        const { frames, duration, mode } = getSpriteForEntity(this);
+        this.frames = frames;
+        this.frameDuration = duration || 0;
+        this.frameElapsed = 0;
+        this.frameIndex = 0;
+        this.playbackMode = mode;
+        setupPickerFrames(this);
     }
 }

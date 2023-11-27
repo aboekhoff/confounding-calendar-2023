@@ -14,3 +14,6 @@ export const BOUNCE_FACTOR = 0.5;
 
 // ui
 export const PICK_TIMEOUT = 500;
+
+// gmaeplay
+export const PULSE_LIFETIME = 16;

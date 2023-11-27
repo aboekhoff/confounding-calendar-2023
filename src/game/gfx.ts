@@ -1,11 +1,12 @@
-import { Entity } from "../model/entity";
+import { Entity, PlaybackMode } from "../model/entity";
 import { makeArray2d, i2rgba } from "../model/util";
 
-interface SpriteData {
+export interface SpriteData {
     name: string;
     rect: { x: number, y: number, w: number, h: number };
     frames: number;
     speed?: number;
+    mode?: string;
 } 
 
 export const type2Sprite: Record<string, string> = {
@@ -18,6 +19,8 @@ export const type2Sprite: Record<string, string> = {
     "MIRROR_SW": "mirror-sw",
     "MIRROR_SE": "mirror-se",
     "EXIT": "exit",
+    "BOX": "box",
+    "PULSE": "pulse",
 }
 
 export const spriteData: Record<string, SpriteData> = {
@@ -112,15 +115,22 @@ export const spriteData: Record<string, SpriteData> = {
         rect: { x: 256 + 128 + 32, y: 64, w: 32, h: 16 },
         frames: 1,
     },
+    "plus": {
+        name: "plus",
+        rect: { x: 256 + 128 + 64, y: 64, w: 32, h: 16 },
+        frames: 1,
+    },
     "mirror-se": {
         name: "mirror-se",
         rect: { x: 0, y: 64 + 16, w: 32, h: 32 },
         frames: 12,
+        speed: 128,
     },
     "mirror-sw": {
         name: "mirror-sw",
         rect: { x: 0, y: 64 + 32 + 16, w: 32, h: 32 },
         frames: 12,
+        speed: 128,
     },
     "mirror-nw": {
         name: "mirror-nw",
@@ -132,14 +142,59 @@ export const spriteData: Record<string, SpriteData> = {
         rect: { x: 32, y: 64 + 32 + 32 + 16, w: 32, h: 32},
         frames: 1,
     },
+    "box": {
+        name: "box",
+        rect: { x: 64, y: 64 * 2 + 16, w: 32, h: 32},
+        frames: 1,
+    },
     "exit": {
         name: "exit",
         rect: { x: 0, y: 64 + 32 * 3 + 16, w: 32, h: 32 },
         frames: 6,
-        speed: 256,
+        speed: 128 + 64,
+    },
+    "font-1": {
+        name: "font-1",
+        rect: { x: 0, y: 64 + 32 * 4 + 16, w: 32, h: 32 },
+        frames: 16, 
+    },
+    "font-2": {
+        name: "font-2",
+        rect: { x: 0, y: 64 + 32 * 5 + 16, w: 32, h: 32 },
+        frames: 16, 
+    },
+    "font-3": {
+        name: "font-3",
+        rect: { x: 0, y: 64 + 32 * 6 + 16, w: 32, h: 32 },
+        frames: 16, 
+    },
+    "font-4": {
+        name: "font-4",
+        rect: { x: 0, y: 64 + 32 * 8 + 16, w: 16, h: 16 },
+        frames: 26 + 6, 
+    },
+    "font-5": {
+        name: "font-5",
+        rect: { x: 0, y: 64 + 32 * 8 + 16 * 2, w: 16, h: 16 },
+        frames: 15,
+    },
+    "pulse": {
+        name: "pulse",
+        rect: { x: 0, y: 64 + 32 * 8 + 16 * 3, w: 32, h: 32 },
+        frames: 8,
+        speed: 32,
+    },
+    "burst": {
+        name: "burst",
+        rect: { x: 0, y: 64 + 32 * 9 + 16 * 3, w: 32, h: 32},
+        frames: 16,
+        speed: 24,
+        mode: PlaybackMode.ONCE,
     }
 }
 
+export const font2: Record<string, HTMLCanvasElement> = {};
+export const font: Record<string, HTMLCanvasElement> = {};
 export const sprites: Record<string, HTMLCanvasElement[]> = {};
 export const spriteAlpha: Map<HTMLCanvasElement, boolean[][]> = new Map();
 
@@ -147,6 +202,7 @@ export function loadSprites(loadedCallback: () => void) {
     const img = document.createElement('img');
     img.onload = () => {
       setupSprites(img);
+      setupFont();
       loadedCallback();  
     }
     img.src = "/spritesheet.png";
@@ -165,6 +221,35 @@ function computeSpriteAlpha(c: HTMLCanvasElement) {
         }
     }
     return out;
+}
+
+function setupFont() {
+    const fontString1 = 'abcdefghijklmnop';
+    const fontString2 = 'qrstuvwxyz012345';
+    const fontString3 = '6789?!,\'." :)(;';
+
+    const fontString4 = fontString1 + fontString2;
+    const fontString5 = fontString3;
+
+    const strings = [fontString1, fontString2, fontString3];
+    for (let i = 0; i < strings.length; i++) {
+        const key = "font-" + (i+1);
+        const s = strings[i]; 
+        for (let j = 0; j < s.length; j++) {
+            const c = s[j];
+            font[c] = sprites[key][j];
+        }
+    }
+
+    const strings2 = [fontString4, fontString5];
+    for (let i = 0; i < strings2.length; i++) {
+        const key = "font-" + (i+4);
+        const s = strings2[i]; 
+        for (let j = 0; j < s.length; j++) {
+            const c = s[j];
+            font2[c] = sprites[key][j];
+        }
+    }
 }
 
 function setupSprites(img: HTMLImageElement) {
@@ -214,13 +299,14 @@ export function setupPickerFrames(e: Entity) {
     }
 }
 
-export function getSpriteForEntity(type: string) {
-    const spriteKey = type2Sprite[type];
-    const { speed } = spriteData[spriteKey];
+export function getSpriteForEntity(e: Entity) {
+    let spriteKey = type2Sprite[e.type];
+    if (e.destroyed) {
+        spriteKey = "burst";
+    }
+    console.log(spriteData[spriteKey]);
+    const { name, speed, mode } = spriteData[spriteKey];
+    
     const frames = sprites[spriteKey];
-    console.log({
-        spriteKey,
-        sprites: sprites[spriteKey],
-    })
-    return { frames, duration: speed };
+    return { name, frames, duration: speed, mode: mode || "LOOP" };
 }

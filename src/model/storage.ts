@@ -33,11 +33,20 @@ export class Storage {
     }
 
     static getPuzzleList() {
-        return Object.keys(this.manifest).map(k => [this.manifest[k], k]);
+        return Object.keys(this.manifest).map(k => ({ id: k, name: this.manifest[k] }));
     }
 
     static loadLastPuzzle(): Puzzle | null {
         const lastId = localStorage.getItem("lastPuzzle") || "";
         return this.loadPuzzle(lastId);
+    }
+
+    static loadPuzzleByName(name: string): Puzzle | null {
+        for (const id of Object.keys(this.manifest)) {
+            if (this.manifest[id] === name) {
+                return this.loadPuzzle(id);
+            }
+        }
+        return null;
     }
 }

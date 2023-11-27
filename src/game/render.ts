@@ -1,6 +1,7 @@
 import { Entity } from '../model/entity';
 import { V3 } from '../model/vec';
 import { rgba2i } from '../model/util';
+import { font, font2 } from './gfx';
 import { TILE_WIDTH_HALF, TILE_HEIGHT_HALF, SCALE } from '../model/constants';
 
 const pickerCanvas = document.createElement('canvas');
@@ -78,14 +79,19 @@ export function renderEntities1(
     }
 }
 
+// FIXME renderEntity is more appropriate naming
 export function renderSprite(canvas: HTMLCanvasElement, offset: V3, e: Entity, sprite: HTMLCanvasElement) {
+    _renderSprite(canvas, offset, e.screenPos, sprite);
+}
+
+export function _renderSprite(canvas: HTMLCanvasElement, offset: V3, pos: V3, sprite: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d')!;
     const offsetX = offset.x;
     const offsetY = offset.y;
 
-    const sx = (e.screenPos.x * TILE_WIDTH_HALF) - (e.screenPos.y * TILE_WIDTH_HALF);
-    let sy = (e.screenPos.x * TILE_HEIGHT_HALF) + (e.screenPos.y * TILE_HEIGHT_HALF);
-    sy -= e.screenPos.z * (TILE_HEIGHT_HALF) * 2;
+    const sx = (pos.x * TILE_WIDTH_HALF) - (pos.y * TILE_WIDTH_HALF);
+    let sy = (pos.x * TILE_HEIGHT_HALF) + (pos.y * TILE_HEIGHT_HALF);
+    sy -= pos.z * (TILE_HEIGHT_HALF) * 2;
     
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(
@@ -99,4 +105,53 @@ export function renderSprite(canvas: HTMLCanvasElement, offset: V3, e: Entity, s
         sprite.width * SCALE, 
         sprite.height * SCALE
     );
+}
+
+
+export function renderText(canvas: HTMLCanvasElement, offset: V3, pos: V3, text: string) {
+    const lines = text.trim().split('\n');
+    let z = lines.length + pos.z;
+    let start = V3.create(pos.x, pos.y, z);
+    for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
+        let _pos = V3.create(start.x, start.y, start.z);
+        for (let i = line.length-1; i >= 0; i--) {
+            const c = line[i];
+            const sprite = font[c];
+            _renderSprite(canvas, offset, _pos, sprite);
+            _pos = V3.add(_pos, V3.back);
+        }
+        start = V3.add(start, V3.up);
+    }
+}
+
+export function renderFlatSprite(canvas: HTMLCanvasElement, sprite: HTMLCanvasElement, x: number, y: number) {
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(
+        sprite,
+        0, 0, sprite.width, sprite.height,
+        x, y, sprite.width * SCALE, sprite.height * SCALE
+    );
+}
+
+export function renderFlatText(canvas: HTMLCanvasElement, offset: V3, center: V3, text: string) {
+    
+    const lines = text.trim().split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const half = line.length/2;
+        for (let j = 0; j < line.length; j++) {
+            const c = line[j];
+            const sprite = font2[c];
+            renderFlatSprite(
+                canvas,
+                sprite,
+                (offset.x - half) + j + center.x, 
+                offset.y + (center.y - lines.length) + i
+            );
+            
+        }
+    }
 }
