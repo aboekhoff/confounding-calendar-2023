@@ -10,7 +10,7 @@ loadSprites(() => {
   const game = new Game();
 
   if (IS_PROD) {
-    game.pushScreen(new PlayScreen(game, Storage.loadPuzzleByName("1")!));
+    game.pushScreen(new PlayScreen(game, Storage.loadPuzzleByName("Concal2023")!));
     game.start();
     return;
   }

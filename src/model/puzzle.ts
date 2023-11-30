@@ -25,6 +25,10 @@ export class Puzzle {
     public initialState: Entity[] = [];
     public id: string;
     public isDirty: boolean = false;
+    public mirrors1: Set<Entity> = new Set();
+    public mirrors2: Set<Entity> = new Set();
+    public elevators: Set<Entity> = new Set();
+    public powerBlocks: Set<Entity> = new Set();
 
     constructor() {
         this.id = ((Math.random() * MAX_INT) | 0).toString(16) + ":" + 
@@ -67,16 +71,31 @@ export class Puzzle {
         e.pos = pos;
         e.lastPos = e.pos;
         e.screenPos = V3.create(pos.x, pos.y, pos.z);
-        const { frames, duration } = getSpriteForEntity(e);
+        const { frames, duration, drop } = getSpriteForEntity(e);
 
         e.frames = frames;
         e.frameDuration = duration || 0;
+        e.frameDrop = drop || 0;
         this.v2e.set(e.pos, e);
         if (e.type == EntityType.WIZARD) {
             this.player = e;
         }
         if (e.isActor()) {
             this.actors.add(e);
+        }
+        if (e.isMirror()) {
+            if (e.getMirrorType() === "1") {
+                this.mirrors1.add(e);
+            } else if (e.getMirrorType() === "2") {
+                this.mirrors2.add(e);
+            }
+        }
+        if (e.isElevator()) {
+            this.actors.add(e);
+            this.elevators.add(e);
+        }
+        if (e.isPowerBlock()) {
+            this.powerBlocks.add(e);
         }
         setupPickerFrames(e);
         return e;
@@ -112,7 +131,9 @@ export class Puzzle {
 
     _rotate(alsoRotateScreenPos = true) {
         const { min, max } = this.getBounds();
-        const v2e2 = new Map<V3i, Entity>();
+        let v2e2 = new Map<V3i, Entity>();
+        const prevPlayerPos = this.getPlayerPos();
+
         for (const e of this.v2e.values()) {
             const pos = rotate(min, max, e.pos, 1)!;
             e.lastPos = e.pos;
@@ -125,6 +146,27 @@ export class Puzzle {
                 e.rotate();
             }      
         }
+
+        /*
+        const swap = this.v2e;
+        swap.clear();
+        this.v2e = v2e2;
+        v2e2 = swap;
+        
+        const delta = V3.sub(prevPlayerPos, this.getPlayerPos());
+        
+
+        for (const e of this.v2e.values()) {
+            const pos = V3i.add(e.pos, delta);
+            e.lastPos = e.pos;
+            e.pos = pos;
+            if (alsoRotateScreenPos) {
+                e.screenPos = V3.add(e.screenPos, delta);    
+            }
+            v2e2.set(e.pos, e);   
+        }
+        */
+
         this.v2e = v2e2;
     }
 
@@ -137,6 +179,7 @@ export class Puzzle {
     }
 
     canMoveActor(e: Entity, dir: V3i): boolean {
+        if (e.isElevator()) { return false; }
         if (!e.isActor()) { return false; }
         const next = this.v2e.get(V3i.add(e.pos, dir));
         if (next == null) { return true; }
@@ -145,8 +188,11 @@ export class Puzzle {
     }
 
     moveActor(e1: Entity, dir: V3i) {
+        console.log("moving actor");
+        console.log(e1);
         if (dir == V3i.zero) { return; }
         const e2 = this.v2e.get(V3i.add(e1.pos, dir));
+        
         if (e2 != null) {
             this.moveActor(e2, dir);
         }
@@ -177,11 +223,6 @@ export class Puzzle {
         return false;
     }
 
-    // let's make lots of ways to die eventually
-    // reflect your bolt onto yourself
-    // get crushed
-    // lots of fun things
-
     didPlayerWin() {
         const below = this.getEntityBelow(this.player!.pos);
         return (below !== null && below.type === EntityType.EXIT);
@@ -196,7 +237,9 @@ export class Puzzle {
     }
 
     pushHistory() {
-        this.history.push([...this.actors].map(e => e.copy()));
+        this.history.push(
+            [...this.actors, ...this.powerBlocks].map(e => e.copy())
+        );
     }
 
     pushHistoryAll() {
@@ -211,6 +254,35 @@ export class Puzzle {
         }
     }
 
+    public findOtherMirror(e: Entity, es: Iterable<Entity>): Entity | null {
+        for (const other of es) {
+            if (e !== other) { return other;}
+        }
+        return null;
+    }
+
+    public isReflectiveHit(e: Entity, mirror: Entity): boolean {
+        const facing = mirror.getFacing();
+        return V3i.add(mirror.pos, facing) === e.pos;
+    }
+
+    updateElevators(isActive: boolean) {
+        this.elevators.forEach(e => {
+            if (isActive) {
+                this.moveActor(e, V3i.up);
+            } else {
+                this.moveActor(e, V3i.down);
+            }
+            e.isActive = isActive;
+            const { frames } = getSpriteForEntity(e);
+            e.frames = frames;
+        });
+    }
+
+    public getPlayerPos(): V3i {
+        return this.player ? this.player.pos : V3i.zero;
+    }
+
     public tick(): boolean {
 
         let ticked = false;
@@ -218,18 +290,54 @@ export class Puzzle {
             if (e.destroyed) { continue; }
             if (e.momentum === V3i.zero) { continue; }
             e.age++;
-            ticked = true;
+            
             const nextPos = V3i.add(e.pos, e.momentum);
             const nextEntity = this.v2e.get(nextPos);
             if (nextEntity == null) {
                 this.moveActor(e, e.momentum);
+                ticked = true;
             }
-            else if (!nextEntity!.isActor() || !this.canMoveActor(nextEntity!, e.momentum)) {
+            else if (e.isPulse() && nextEntity.isPowerBlock()) {
+                nextEntity.isActive = !nextEntity.isActive;
+                e.destroyed = true;
+                const { frames } = getSpriteForEntity(nextEntity);
+                nextEntity.frames = frames;
+                this.updateElevators(nextEntity.isActive);
+                ticked = true;
+            }
+            else if (e.isPulse() && nextEntity.isMirror() && this.isReflectiveHit(e, nextEntity)) {
+                const type = nextEntity.getMirrorType();
+                let other: Entity | null = null;
+                if (type === "1") {
+                    other = this.findOtherMirror(nextEntity, this.mirrors1);
+                }
+                else {
+                    other = this.findOtherMirror(nextEntity, this.mirrors2);
+                }
+                if (other != null) {
+                    const facing = other.getFacing();
+                    const pos = V3i.add(other.pos, facing);
+                    if (this.v2e.get(pos) == null) {
+                        this.v2e.delete(e.pos);
+                        e.pos = pos;
+                        e.lastPos = other.pos;
+                        e.screenPos = other.pos;
+                        this.v2e.set(e.pos, e);
+                        e.momentum = facing;
+                        ticked = true;
+                    } else {
+                        e.momentum = V3i.zero;
+                        e.destroyed = true;
+                    }
+                }
+            }
+            else if (e.isPulse() && !nextEntity!.isActor() || !this.canMoveActor(nextEntity!, e.momentum)) {
                 e.destroyed = true;
             }
             else {
                 this.moveActor(e, e.momentum);
                 e.destroyed = true;
+                ticked = true;
             }
         }
 

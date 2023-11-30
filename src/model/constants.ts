@@ -2,7 +2,7 @@
 export const EDITOR_SCALE = 2;
 export const SCALE = 3;
 export const BASE_TILE_SIZE = 32;
-export const TILE_SIZE = BASE_TILE_SIZE * SCALE;
+export const TILE_SIZE = BASE_TILE_SIZE;
 export const TILE_WIDTH_HALF = TILE_SIZE/2;
 export const TILE_HEIGHT_HALF = TILE_SIZE/4;
 
@@ -19,4 +19,6 @@ export const PICK_TIMEOUT = 500;
 export const PULSE_LIFETIME = 16;
 
 // builds
-export const IS_PROD = true;
+export const IS_PROD = false;
+
+export const TEXT_SCALE = 2;

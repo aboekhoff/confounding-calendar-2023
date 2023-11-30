@@ -4,9 +4,10 @@ import { renderEntities, renderSprite, pick, renderFlatSprite } from '../game/re
 import { V3, V3i } from '../model/vec';
 import { Entity, EntityType, PlaybackMode } from '../model/entity';
 import { Puzzle } from '../model/puzzle';
-import { BOUNCE_FACTOR, SCALE } from '../model/constants';
+import { BOUNCE_FACTOR, SCALE, TEXT_SCALE } from '../model/constants';
 import { EditScreen } from '../screens/edit';
 import { Storage } from '../model/storage';
+import { state } from '../model/shared';
 import { Audio, SoundType } from '../game/audio';
 
 const CommandType = {
@@ -63,10 +64,10 @@ export class PlayScreen implements Screen {
     public transitions: Transition[] = [];
     public history: Entity[][] = [];
     public textEntities: SpriteEntity[] = [];
+    public scale: number = SCALE;
 
     constructor(public g: Game, puzzle: Puzzle) {
         this.puzzle = puzzle;
-        console.log(this.puzzle);
         this.init();    
     }
 
@@ -136,9 +137,8 @@ export class PlayScreen implements Screen {
     }
 
     public showText1(text: string, offsetZ = 0) {
-        console.log(text)
-        const fontWidth = font2['a'].width * SCALE;
-        const fontHeight = font2['a'].height * SCALE;
+        const fontWidth = font2['a'].width * TEXT_SCALE;
+        const fontHeight = font2['a'].height * TEXT_SCALE;
         const textWidth = (text.length/2) * fontWidth;
         const offset = this.getOffset();
         const startPos = V3.create(offset.x - (textWidth * fontWidth), (offset.y) - (offset.y/2) - (offsetZ * fontHeight), 0);
@@ -247,7 +247,13 @@ export class PlayScreen implements Screen {
                 const t = this.computeTransition1(e);
                 if (t != null) {
                     this.transitions.push(t);
+                    continue;
                 }
+            } 
+            if (e.destroyed) {
+                const idx = this.renderList.indexOf(e);
+                if (idx !== -1) { this.renderList.splice(idx, 1); }
+                this.puzzle.deleteEntity(e.pos);     
             }
         }
     }
@@ -334,6 +340,14 @@ export class PlayScreen implements Screen {
                 this.transitions.splice(i, 1);
             }
         }
+
+        for (let i = this.renderList.length-1; i >= 0; i--) {
+            const e = this.renderList[i];
+            if (e.destroyed) {
+                this.puzzle.deleteEntity(e.pos);
+                this.renderList.splice(i, 1);
+            }
+        }
     }
 
     processTransition1(t: Transition) {
@@ -387,6 +401,14 @@ export class PlayScreen implements Screen {
 
     onExit = () => {
         this.removeCallbacks();
+    }
+
+    onMouseWheel = (e: WheelEvent) => {
+        if (e.deltaY < 0) {
+            state.scale = Math.min(3, state.scale + 0.2);
+        } else if (e.deltaY > 0) {
+            state.scale = Math.max(1, state.scale - 0.2);
+        }
     }
 
     onKeyDown = (e: KeyboardEvent) => {
@@ -513,6 +535,7 @@ export class PlayScreen implements Screen {
         this.g.canvas.addEventListener('mousemove', this.onMouseMove);
         this.g.canvas.addEventListener('mousedown', this.onMouseDown);
         this.g.canvas.addEventListener('keydown', this.onKeyDown);
+        this.g.canvas.addEventListener('wheel', this.onMouseWheel);
         this.g.canvas.oncontextmenu = this.onContextMenu;
     }
 
@@ -520,6 +543,7 @@ export class PlayScreen implements Screen {
         this.g.canvas.removeEventListener('mousemove', this.onMouseMove);
         this.g.canvas.removeEventListener('mousedown', this.onMouseDown);
         this.g.canvas.removeEventListener('keydown', this.onKeyDown);
+        this.g.canvas.removeEventListener('wheel', this.onMouseWheel);
         this.g.canvas.oncontextmenu = null;
     }
 
@@ -533,6 +557,9 @@ export class PlayScreen implements Screen {
                 if (e.playbackMode === PlaybackMode.LOOP) {
                     e.frameElapsed = e.frameElapsed % e.frameDuration;
                     e.frameIndex = (e.frameIndex + 1) % e.frames.length;
+                    if (e.frameIndex === 0) {
+                        e.frameIndex += e.frameDrop;
+                    }
                 } else {
                     e.frameIndex = e.frames.length - 1;
                 }
@@ -547,12 +574,21 @@ export class PlayScreen implements Screen {
         this.renderEntities();
         this.renderHighlight();
         this.renderText();
+        this.renderStickers();
     }
 
     renderText() {
         this.textEntities.forEach(e => {
             renderFlatSprite(this.g.canvas, e.sprite, e.screenPos.x, e.screenPos.y);
         });
+    }
+
+    renderStickers() {
+        let { x  } = this.getOffset();
+        x -= 128;
+        renderFlatSprite(this.g.canvas, sprites["sticker-move"][0], x + (128* 0), 32);
+        renderFlatSprite(this.g.canvas, sprites["sticker-cast"][0], x + 32 + 128*1, 32);
+        renderFlatSprite(this.g.canvas, sprites["sticker-rotate"][0], x + 32 + 128*2, 32);
     }
 
     public sortRenderList() {

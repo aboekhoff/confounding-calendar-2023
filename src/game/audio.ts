@@ -39,7 +39,7 @@ export class Audio {
     if (IS_PROD) {
       return "assets/" + asset;
     } else {
-      return "/" + asset;
+      return "assets/" + asset;
     }
   }
 

@@ -48,6 +48,7 @@ export class Storage {
             Object.keys(puzzles).forEach(id => {
                 this.manifest[id] = puzzles[id].name;
             });
+            return;
         }
 
         const json = localStorage.getItem("manifest") || "{}";

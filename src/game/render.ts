@@ -2,7 +2,8 @@ import { Entity } from '../model/entity';
 import { V3 } from '../model/vec';
 import { rgba2i } from '../model/util';
 import { font, font2 } from './gfx';
-import { TILE_WIDTH_HALF, TILE_HEIGHT_HALF, SCALE } from '../model/constants';
+import { TILE_WIDTH_HALF, TILE_HEIGHT_HALF, TEXT_SCALE } from '../model/constants';
+import { state } from '../model/shared';
 
 const pickerCanvas = document.createElement('canvas');
 
@@ -47,14 +48,16 @@ export function renderEntities1(
     renderList: Entity[], 
     query: ((x: number, y: number, w: number, h: number) => boolean) | undefined
 ) {
+    const { scale } = state;
+
     const ctx = canvas.getContext('2d')!;
     for (const e of renderList) {
         const sprite = query != null ? e.pickerFrames[e.frameIndex] : e.frames[e.frameIndex];
         const offsetX = offset.x;
         const offsetY = offset.y;
-        const sx = (e.screenPos.x * TILE_WIDTH_HALF) - (e.screenPos.y * TILE_WIDTH_HALF);
-        let sy = (e.screenPos.x * TILE_HEIGHT_HALF) + (e.screenPos.y * TILE_HEIGHT_HALF);
-        sy -= e.screenPos.z * (TILE_HEIGHT_HALF) * 2;
+        const sx = (e.screenPos.x * TILE_WIDTH_HALF * scale) - (e.screenPos.y * TILE_WIDTH_HALF * scale);
+        let sy = (e.screenPos.x * TILE_HEIGHT_HALF * scale) + (e.screenPos.y * TILE_HEIGHT_HALF * scale);
+        sy -= e.screenPos.z * (TILE_HEIGHT_HALF * scale) * 2;
 
         /*
         if (query) {
@@ -73,8 +76,8 @@ export function renderEntities1(
             sprite.height,
             offsetX + sx,
             offsetY + sy, 
-            sprite.width * SCALE, 
-            sprite.height * SCALE
+            sprite.width * scale, 
+            sprite.height * scale
         );
     }
 }
@@ -89,9 +92,11 @@ export function _renderSprite(canvas: HTMLCanvasElement, offset: V3, pos: V3, sp
     const offsetX = offset.x;
     const offsetY = offset.y;
 
-    const sx = (pos.x * TILE_WIDTH_HALF) - (pos.y * TILE_WIDTH_HALF);
-    let sy = (pos.x * TILE_HEIGHT_HALF) + (pos.y * TILE_HEIGHT_HALF);
-    sy -= pos.z * (TILE_HEIGHT_HALF) * 2;
+    const { scale } = state;
+
+    const sx = (pos.x * TILE_WIDTH_HALF * scale) - (pos.y * TILE_WIDTH_HALF * scale);
+    let sy = (pos.x * TILE_HEIGHT_HALF * scale) + (pos.y * TILE_HEIGHT_HALF * scale);
+    sy -= pos.z * (TILE_HEIGHT_HALF * scale) * 2;
     
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(
@@ -102,8 +107,8 @@ export function _renderSprite(canvas: HTMLCanvasElement, offset: V3, pos: V3, sp
         sprite.height,
         offsetX + sx,
         offsetY + sy, 
-        sprite.width * SCALE, 
-        sprite.height * SCALE
+        sprite.width * scale, 
+        sprite.height * scale
     );
 }
 
@@ -131,7 +136,7 @@ export function renderFlatSprite(canvas: HTMLCanvasElement, sprite: HTMLCanvasEl
     ctx.drawImage(
         sprite,
         0, 0, sprite.width, sprite.height,
-        x, y, sprite.width * SCALE, sprite.height * SCALE
+        x, y, sprite.width * TEXT_SCALE, sprite.height * TEXT_SCALE
     );
 }
 

@@ -17,10 +17,16 @@ export const EntityType = {
     BLOCK_1: "BLOCK_1",
     BLOCK_2: "BLOCK_2",
     BLOCK_3: "BLOCK_3",
-    MIRROR_SE: "MIRROR_SE",
-    MIRROR_SW: "MIRROR_SW",
-    MIRROR_NE: "MIRROR_NE",
-    MIRROW_NW: "MIRROR_NW",
+    ELEVATOR_BLOCK: "ELEVATOR_BLOCK",
+    POWER_BLOCK: "POWER_BLOCK",
+    MIRROR_1_SE: "MIRROR_1_SE",
+    MIRROR_1_SW: "MIRROR_1_SW",
+    MIRROR_1_NE: "MIRROR_1_NE",
+    MIRROR_1_NW: "MIRROR_1_NW",
+    MIRROR_2_SE: "MIRROR_2_SE",
+    MIRROR_2_SW: "MIRROR_2_SW",
+    MIRROR_2_NE: "MIRROR_2_NE",
+    MIRROR_2_NW: "MIRROR_2_NW",
     WIZARD: "WIZARD",
     PULSE: "PULSE",
     EXIT: "EXIT",
@@ -58,6 +64,8 @@ export class Entity {
     public frameIndex = 0;
     public frameElapsed = 0;
     public frameDuration = 0;
+    public frameDrop = 0;
+    public isActive: boolean = false;
     public age = 0; // used for pulses
     public momentum: V3i = V3i.zero;
     public destroyed: boolean = false;
@@ -86,40 +94,90 @@ export class Entity {
         return out;
     }
 
+    public isPulse(): boolean {
+        return this.type === "PULSE";
+    }
+
     public isActor(): boolean {
         return this.type === "WIZARD" ||
-               this.type === "MIRROR_NE" ||
-               this.type === "MIRROR_SE" ||
-               this.type === "MIRROR_NW" ||
-               this.type === "MIRROR_SW" ||
+               this.type === "MIRROR_1_NE" ||
+               this.type === "MIRROR_1_SE" ||
+               this.type === "MIRROR_1_NW" ||
+               this.type === "MIRROR_1_SW" ||
+               this.type === "MIRROR_2_NE" ||
+               this.type === "MIRROR_2_SE" ||
+               this.type === "MIRROR_2_NW" ||
+               this.type === "MIRROR_2_SW" ||
                this.type === "BOX" ||
                this.type === "PULSE"
     }
 
+    public isMirror(): boolean {
+        return this.type.startsWith("MIRROR");
+    }
+
+    public isElevator(): boolean {
+        return this.type === "ELEVATOR_BLOCK";
+    }
+
+    public isPowerBlock(): boolean {
+        return this.type === "POWER_BLOCK";
+    }
+
+    public getRotation(): string {
+        if (this.type.endsWith("NE")) { return "NE"; }
+        if (this.type.endsWith("NW")) { return "NW"; }
+        if (this.type.endsWith("SE")) { return "SE"; }
+        if (this.type.endsWith("SW")) { return "SW"; }
+        return "";
+    }
+
+    public getFacing(): V3i {
+        console.log(this.getRotation());
+        switch (this.getRotation()) {
+            case "SE": return V3i.right;
+            case "NW": return V3i.left;
+            case "NE": return V3i.forward;
+            case "SW": return V3i.back;
+            default: return V3i.zero;
+        }
+    }
+
+    public getMirrorType(): string {
+        if (this.type.startsWith("MIRROR_1")) {
+            return "1";
+        }
+
+        if (this.type.startsWith("MIRROR_2")) {
+            return "2";
+        }
+
+        return "";
+    }
+
+    public isPushable() {
+        return this.isActor() && !this.isElevator();
+    }
+
     public isAffectedByGravity(): boolean {
-        return this.type === "WIZARD" ||
-               this.type === "MIRROR_NE" ||
-               this.type === "MIRROR_SE" ||
-               this.type === "MIRROR_NW" ||
-               this.type === "MIRROR_SW" ||
-               this.type === "BOX";
+        return this.type === "WIZARD" || 
+               this.type === "BOX" ||
+               this.isMirror();
     }
 
     public hasOrientation(): boolean {
-        return this.type === "MIRROR_NE" ||
-               this.type === "MIRROR_SE" ||
-               this.type === "MIRROR_NW" ||
-               this.type === "MIRROR_SW";
+        return this.isMirror();
     }
 
     public rotate() {
-        const [prefix, suffix] = this.type.split("_");
-        this.type = prefix + "_" + ROTATIONS[suffix];
-        const { frames, duration, mode } = getSpriteForEntity(this);
+        const [prefix, group, suffix] = this.type.split("_");
+        this.type = prefix + "_" + group + "_" + ROTATIONS[suffix];
+        const { frames, duration, mode, drop } = getSpriteForEntity(this);
         this.frames = frames;
         this.frameDuration = duration || 0;
         this.frameElapsed = 0;
         this.frameIndex = 0;
+        this.frameDrop = drop || 0;
         this.playbackMode = mode;
         setupPickerFrames(this);
     }

@@ -109,14 +109,23 @@ export class EditScreen implements Screen {
 
     public setupPrototypes() {
         this.prototypes = {
-            "BLOCK_1": { type: "BLOCK", frames: [sprites["block"][0]] },
-            "BLOCK_2": { type: "BLOCK", frames: [sprites["block"][1]] },
-            "BLOCK_3": { type: "BLOCK", frames: [sprites["block"][2]] },
+            "BLOCK_1": { type: "BLOCK_1", frames: [sprites["block"][0]] },
+            "BLOCK_2": { type: "BLOCK_2", frames: [sprites["block"][1]] },
+            "BLOCK_3": { type: "BLOCK_3", frames: [sprites["block"][2]] },
+            "BLOCK_4": { type: "BLOCK_4", frames: [sprites["block"][3]] },
+            "BLOCK_5": { type: "BLOCK_5", frames: [sprites["block"][4]] },
+            "BLOCK_6": { type: "BLOCK_5", frames: [sprites["block"][5]] },
+            "ELEVATOR_BLOCK": { type: "ELEVATOR_BLOCK", frames: [sprites["elevator-block-inactive"][0]] },
+            "POWER_BLOCK": { type: "POWER_BLOCK", frames: [sprites["power-block-inactive"][0]] },
             "WIZARD": { type: "WIZARD", frames: sprites["wiz"], frameDuration: 96 },
-            "MIRROR_SE": { type: "MIRROR_SE", frames: sprites["mirror-se"], frameDuration: 128 },
-            "MIRROR_SW": { type: "MIRROR_SW", frames: sprites["mirror-sw"], frameDuration: 128 },
-            "MIRROR_NE": { type: "MIRROR_NE", frames: sprites["mirror-ne"] },
-            "MIRROR_NW": { type: "MIRROR_NW", frames: sprites["mirror-nw"] },
+            "MIRROR_1_SE": { type: "MIRROR_1_SE", frames: sprites["mirror-1-se"] },
+            "MIRROR_1_SW": { type: "MIRROR_1_SW", frames: sprites["mirror-1-sw"] },
+            "MIRROR_1_NE": { type: "MIRROR_1_NE", frames: sprites["mirror-1-ne"] },
+            "MIRROR_1_NW": { type: "MIRROR_1_NW", frames: sprites["mirror-1-nw"] },
+            "MIRROR_2_SE": { type: "MIRROR_1_SE", frames: sprites["mirror-2-se"] },
+            "MIRROR_2_SW": { type: "MIRROR_1_SW", frames: sprites["mirror-2-sw"] },
+            "MIRROR_2_NE": { type: "MIRROR_1_NE", frames: sprites["mirror-2-ne"] },
+            "MIRROR_2_NW": { type: "MIRROR_1_NW", frames: sprites["mirror-2-nw"] },
         }; 
     }
 
@@ -141,10 +150,19 @@ export class EditScreen implements Screen {
             { type: "BLOCK_1", sprite: sprites["block"][0] },
             { type: "BLOCK_2", sprite: sprites["block"][1] },
             { type: "BLOCK_3", sprite: sprites["block"][2] },
-            { type: "MIRROR_SE", sprite: sprites["mirror-se"][0] },
-            { type: "MIRROR_SW", sprite: sprites["mirror-sw"][0] },
-            { type: "MIRROR_NW", sprite: sprites["mirror-nw"][0] },
-            { type: "MIRROR_NE", sprite: sprites["mirror-ne"][0] },
+            { type: "BLOCK_4", sprite: sprites["block"][3] },
+            { type: "BLOCK_5", sprite: sprites["block"][4] },
+            { type: "BLOCK_6", sprite: sprites["block"][5] },
+            { type: "POWER_BLOCK", sprite: sprites["power-block-inactive"][0] },
+            { type: "ELEVATOR_BLOCK", sprite: sprites["elevator-block-inactive"][0] },
+            { type: "MIRROR_1_SE", sprite: sprites["mirror-1-se"][0] },
+            { type: "MIRROR_1_SW", sprite: sprites["mirror-1-sw"][0] },
+            { type: "MIRROR_1_NW", sprite: sprites["mirror-1-nw"][0] },
+            { type: "MIRROR_1_NE", sprite: sprites["mirror-1-ne"][0] },
+            { type: "MIRROR_2_SE", sprite: sprites["mirror-2-se"][0] },
+            { type: "MIRROR_2_SW", sprite: sprites["mirror-2-sw"][0] },
+            { type: "MIRROR_2_NW", sprite: sprites["mirror-2-nw"][0] },
+            { type: "MIRROR_2_NE", sprite: sprites["mirror-2-ne"][0] },
             { type: "EXIT", sprite: sprites["exit"][0] },
             { type: "BOX", sprite: sprites["box"][0] },
         ];
@@ -155,13 +173,13 @@ export class EditScreen implements Screen {
         const size2 = size/2;
 
         for (let x = -size2; x < size2; x++) {
-            for (let y = -size2; y < size2; y++) {
-                const e = new Entity();
-                e.pos = V3i.create(x, y, -1);
-                e.screenPos = V3.create(x, y, -1);
-                e.frames = sprites["block-frame"];
-                e.frameIndex = 0;
-                setupPickerFrames(e);
+            inner:for (let y = -size2; y < size2; y++) {
+                const pos = V3i.create(x, y, 0);
+                if (this.puzzle.v2e.has(pos)) {
+                    this.renderList.push(this.puzzle.v2e.get(pos)!);
+                    continue inner;
+                }
+                const e = this.puzzle.createEntity("BLOCK_6", V3i.create(x, y, 0));
                 this.renderList.push(e);
             }
         }
@@ -199,12 +217,17 @@ export class EditScreen implements Screen {
     onMouseDown = (e: MouseEvent) => {
         this.entityAtPoint = this.computeEntityAtPoint(e.clientX, e.clientY);
         if (this.activeBrush != null) {
-            this.handleInput();
+            this.handleInput(e.buttons > 1);
         }
     }
 
+    onContextMenu = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
     handlePaletteClick = (brushData: BrushData) => {
-        this.activeBrush = null;
+        // this.activeBrush = null;
 
         if (brushData.type === "FOLDER") {
             this.showFolder = true;
@@ -239,12 +262,13 @@ export class EditScreen implements Screen {
         if (brushData.type === "PLAY") {
             this.g.popScreen();
             this.g.pushScreen(new PlayScreen(this.g, this.puzzle));
+            return;
         }
 
         this.activeBrush = brushData;
     }
 
-    handleInput() {
+    handleInput(isRightButton: boolean) {
         // brushes
 
         if (this.entityAtPoint == null || this.activeBrush == null) {
@@ -259,10 +283,18 @@ export class EditScreen implements Screen {
             return;
         }
 
-        this.createEntity(this.activeBrush?.type!, V3i.add(this.entityAtPoint.pos, V3i.up));
+        if (isRightButton) {
+            this.createEntity(this.activeBrush?.type!, this.entityAtPoint.pos);
+        } else {
+            this.createEntity(this.activeBrush?.type!, V3i.add(this.entityAtPoint.pos, V3i.up));
+        }
+        
     }
 
     createEntity(type: string, pos: V3i) {
+        if (this.puzzle.v2e.has(pos)) {
+            this.deleteEntity(this.puzzle.v2e.get(pos)!);
+        }
         const e = this.puzzle.createEntity(
             type,
             pos,
@@ -277,12 +309,6 @@ export class EditScreen implements Screen {
         if (idx !== -1) {
             this.renderList.splice(idx, 1);
         }
-    }
-
-    onContextMenu = (e: MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        return false;
     }
 
     public updateAnimations() {

@@ -8,6 +8,7 @@ export interface SpriteData {
     frames: number;
     speed?: number;
     mode?: string;
+    drop?: number;
 } 
 
 export const type2Sprite: Record<string, string> = {
@@ -15,10 +16,17 @@ export const type2Sprite: Record<string, string> = {
     "BLOCK_1": "block-1",
     "BLOCK_2": "block-2",
     "BLOCK_3": "block-3",
-    "MIRROR_NE": "mirror-ne",
-    "MIRROR_NW": "mirror-nw",
-    "MIRROR_SW": "mirror-sw",
-    "MIRROR_SE": "mirror-se",
+    "BLOCK_4": "block-4",
+    "BLOCK_5": "block-5",
+    "BLOCK_6": "block-6",
+    "MIRROR_1_NE": "mirror-1-ne",
+    "MIRROR_1_NW": "mirror-1-nw",
+    "MIRROR_1_SW": "mirror-1-sw",
+    "MIRROR_1_SE": "mirror-1-se",
+    "MIRROR_2_NE": "mirror-2-ne",
+    "MIRROR_2_NW": "mirror-2-nw",
+    "MIRROR_2_SW": "mirror-2-sw",
+    "MIRROR_2_SE": "mirror-2-se",
     "EXIT": "exit",
     "BOX": "box",
     "PULSE": "pulse",
@@ -38,12 +46,27 @@ export const spriteData: Record<string, SpriteData> = {
     },
     "block-2": {
         name: "block-2",
-        rect: { x: 0, y: 32, w: 32, h: 32 },
+        rect: { x: 32, y: 32, w: 32, h: 32 },
         frames: 1,
     },
     "block-3": {
         name: "block-3",
-        rect: { x: 0, y: 32, w: 32, h: 32 },
+        rect: { x: 64, y: 32, w: 32, h: 32 },
+        frames: 1,
+    },
+    "block-4": {
+        name: "block-4",
+        rect: { x: 96, y: 32, w: 32, h: 32 },
+        frames: 1,
+    },
+    "block-5": {
+        name: "block-5",
+        rect: { x: 128, y: 32, w: 32, h: 32 },
+        frames: 1,
+    },
+    "block-6": {
+        name: "block-6",
+        rect: { x: 128 + 32, y: 32, w: 32, h: 32 },
         frames: 1,
     },
     "block-highlight": {
@@ -54,7 +77,7 @@ export const spriteData: Record<string, SpriteData> = {
     block: {
         name: "block",
         rect: { x: 0, y: 32, w: 32, h: 32 },
-        frames: 3,
+        frames: 6,
     },
     "block-frame": {
         name: "block-frame",
@@ -121,31 +144,54 @@ export const spriteData: Record<string, SpriteData> = {
         rect: { x: 256 + 128 + 64, y: 64, w: 32, h: 16 },
         frames: 1,
     },
-    "mirror-se": {
-        name: "mirror-se",
+    "mirror-1-se": {
+        name: "mirror-1-se",
         rect: { x: 0, y: 64 + 16, w: 32, h: 32 },
-        frames: 12,
-        speed: 128,
-    },
-    "mirror-sw": {
-        name: "mirror-sw",
-        rect: { x: 0, y: 64 + 32 + 16, w: 32, h: 32 },
-        frames: 12,
-        speed: 128,
-    },
-    "mirror-nw": {
-        name: "mirror-nw",
-        rect: { x: 0, y: 64 + 32 + 32 + 16, w: 32, h: 32},
         frames: 1,
     },
-    "mirror-ne": {
-        name: "mirror-ne",
-        rect: { x: 32, y: 64 + 32 + 32 + 16, w: 32, h: 32},
+    "mirror-1-sw": {
+        name: "mirror-1-sw",
+        rect: { x: 32, y: 64 + 16, w: 32, h: 32 },
+        frames: 1,
+    },
+    "mirror-1-nw": {
+        name: "mirror-1-nw",
+        rect: { x: 64, y: 64 + 16, w: 32, h: 32},
+        frames: 1,
+    },
+    "mirror-1-ne": {
+        name: "mirror-1-ne",
+        rect: { x: 96, y: 64 + 16, w: 32, h: 32},
+        frames: 1,
+    },
+    "mirror-2-se": {
+        name: "mirror-2-se",
+        rect: { x: 0, y: 64 + 32 + 16, w: 32, h: 32 },
+        frames: 1,
+    },
+    "mirror-2-sw": {
+        name: "mirror-2-sw",
+        rect: { x: 32, y: 64 + 32 + 16, w: 32, h: 32 },
+        frames: 1,
+    },
+    "mirror-2-nw": {
+        name: "mirror-2-nw",
+        rect: { x: 64, y: 64 + 32 + 16, w: 32, h: 32},
+        frames: 1,
+    },
+    "mirror-2-ne": {
+        name: "mirror-2-ne",
+        rect: { x: 96, y: 64 + 32 + 16, w: 32, h: 32},
         frames: 1,
     },
     "box": {
         name: "box",
         rect: { x: 64, y: 64 * 2 + 16, w: 32, h: 32},
+        frames: 1,
+    },
+    "base-block": {
+        name: "base-block",
+        rect: { x: 96, y: 64 * 2 + 16, w: 32, h: 32 },
         frames: 1,
     },
     "exit": {
@@ -169,6 +215,26 @@ export const spriteData: Record<string, SpriteData> = {
         rect: { x: 0, y: 64 + 32 * 6 + 16, w: 32, h: 32 },
         frames: 16, 
     },
+    "power-block-inactive": {
+        name: "power-block-inactive",
+        rect: { x: 0, y: 64 + 32 * 7 + 16, w: 32, h: 32 },
+        frames: 1,
+    },
+    "power-block-active": {
+        name: "power-block-active",
+        rect: { x: 32, y: 64 + 32 * 7 + 16, w: 32, h: 32 },
+        frames: 1,
+    },
+    "elevator-block-inactive": {
+        name: "elevator-block-inactive",
+        rect: { x: 64, y: 64 + 32 * 7 + 16, w: 32, h: 32 },
+        frames: 1,
+    },
+    "elevator-block-active": {
+        name: "elevator-block-active",
+        rect: { x: 96, y: 64 + 32 * 7 + 16, w: 32, h: 32 },
+        frames: 1,
+    },
     "font-4": {
         name: "font-4",
         rect: { x: 0, y: 64 + 32 * 8 + 16, w: 16, h: 16 },
@@ -182,8 +248,9 @@ export const spriteData: Record<string, SpriteData> = {
     "pulse": {
         name: "pulse",
         rect: { x: 0, y: 64 + 32 * 8 + 16 * 3, w: 32, h: 32 },
-        frames: 8,
+        frames: 10,
         speed: 32,
+        drop: 2,
     },
     "burst": {
         name: "burst",
@@ -191,7 +258,24 @@ export const spriteData: Record<string, SpriteData> = {
         frames: 16,
         speed: 24,
         mode: PlaybackMode.ONCE,
-    }
+    },
+    "sticker-move":
+    {
+        name: "sticker-move",
+        rect: { x: 0, y: 64 + 32 * 10 + 16 * 3, w: 64, h: 64 },
+        frames: 1,
+    },
+    "sticker-cast":
+    {
+        name: "sticker-cast",
+        rect: { x: 64, y: 64 + 32 * 10 + 16 * 3, w: 64, h: 64 },
+        frames: 1,
+    },
+    "sticker-rotate": {
+        name: "sticker-rotate",
+        rect: { x: 128, y: 64 + 32 * 10 + 16 * 3, w: 64, h: 64 },   
+        frames: 1,
+    },
 }
 
 export const font2: Record<string, HTMLCanvasElement> = {};
@@ -210,7 +294,7 @@ export function loadSprites(loadedCallback: () => void) {
     if (IS_PROD) {
         img.src = "assets/spritesheet.png"
     } else {
-        img.src = "/spritesheet.png";
+        img.src = "assets/spritesheet.png";
     }
 }
 
@@ -310,9 +394,13 @@ export function getSpriteForEntity(e: Entity) {
     if (e.destroyed) {
         spriteKey = "burst";
     }
-    console.log(spriteData[spriteKey]);
-    const { name, speed, mode } = spriteData[spriteKey];
-    
+    if (e.type === "POWER_BLOCK") {
+        spriteKey = e.isActive ? "power-block-active" : "power-block-inactive";
+    }
+    if (e.type === "ELEVATOR_BLOCK") {
+        spriteKey = e.isActive ? "elevator-block-active" : "elevator-block-inactive";
+    }
+    const { name, speed, drop, mode } = spriteData[spriteKey];
     const frames = sprites[spriteKey];
-    return { name, frames, duration: speed, mode: mode || "LOOP" };
+    return { name, frames, duration: speed, mode: mode || "LOOP", drop };
 }
